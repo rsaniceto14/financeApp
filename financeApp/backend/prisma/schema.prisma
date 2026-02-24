@@ -1,0 +1,121 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  refreshToken String?
+  memberships Membership[]
+  createdAt DateTime @default(now())
+
+  accounts        Account[]
+  creditCards     CreditCard[]
+  transactions    Transaction[]
+  subscriptions   Subscription[]
+}
+
+model Organization {
+  id            String        @id @default(uuid())
+  name          String
+  memberships   Membership[]
+  createdAt     DateTime      @default(now())
+}
+
+model Membership {
+  id              String        @id @default(uuid())
+  userId          String
+  organizationId  String
+  role            Role
+
+  user            User          @relation(fields: [userId], references: [id])
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+model Account {
+  id        String   @id @default(uuid())
+  name      String
+  balance   Decimal  @db.Decimal(12,2)
+  userId    String
+  createdAt DateTime @default(now())
+
+  user          User         @relation(fields: [userId], references: [id])
+  transactions  Transaction[]
+  subscriptions Subscription[]
+}
+
+model CreditCard {
+  id        String   @id @default(uuid())
+  name      String
+  limit     Decimal  @db.Decimal(12,2)
+  userId    String
+  createdAt DateTime @default(now())
+
+  user          User         @relation(fields: [userId], references: [id])
+  invoices      Invoice[]
+  transactions  Transaction[]
+  subscriptions Subscription[]
+}
+
+model Invoice {
+  id           String   @id @default(uuid())
+  dueDate      DateTime
+  totalAmount  Decimal  @db.Decimal(12,2)
+  creditCardId String
+
+  creditCard CreditCard @relation(fields: [creditCardId], references: [id])
+  transactions Transaction[]
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  description String
+  amount      Decimal  @db.Decimal(12,2)
+  type        String
+  userId      String
+  accountId   String?
+  creditCardId String?
+  invoiceId   String?
+  parentTransactionId String?
+
+  createdAt DateTime @default(now())
+
+  user        User        @relation(fields: [userId], references: [id])
+  account     Account?    @relation(fields: [accountId], references: [id])
+  creditCard  CreditCard? @relation(fields: [creditCardId], references: [id])
+  invoice     Invoice?    @relation(fields: [invoiceId], references: [id])
+  parentTransaction Transaction? @relation("SplitRelation", fields: [parentTransactionId], references: [id])
+  splits      Transaction[] @relation("SplitRelation")
+}
+
+model Subscription {
+  id          String   @id @default(uuid())
+  name        String
+  amount      Decimal  @db.Decimal(12,2)
+  userId      String
+  accountId   String?
+  creditCardId String?
+
+  user       User        @relation(fields: [userId], references: [id])
+  account    Account?    @relation(fields: [accountId], references: [id])
+  creditCard CreditCard? @relation(fields: [creditCardId], references: [id])
+}
