@@ -21,6 +21,8 @@ export class AuthService {
 
         if (!user) throw new UnauthorizedException()
 
+        if (!user.password) throw new UnauthorizedException()
+
         const passwordValid = await bcrypt.compare(password, user.password)
 
         if (!passwordValid) throw new UnauthorizedException()

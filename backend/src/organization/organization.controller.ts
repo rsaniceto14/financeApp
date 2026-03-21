@@ -8,6 +8,7 @@ import { OrganizationService } from './organization.service';
 import { CurrentUser } from 'src/auth/decorators/current-user.decorator';
 import type { JwtPayload } from 'src/auth/types/jwt-payload';
 import { InviteMemberDto } from './dto/invite-member.dto';
+import { Audit } from 'src/audit/decorators/audit.decorators';
 
 @Controller('organization')
 export class OrganizationController {
@@ -22,6 +23,7 @@ export class OrganizationController {
         return this.organizationService.addMember(user, dto);
     }
 
+    @Audit({ action: 'INVITATION_SENT' })
     @Post('invite')
     @UseGuards(AuthGuard('jwt'), RolesGuard)
     @Roles(Role.OWNER, Role.ADMIN)
@@ -32,6 +34,7 @@ export class OrganizationController {
         return this.organizationService.inviteMember(user, dto)
     }
 
+    @Audit({ action: 'INVITATION_ACCEPTED' })
     @Post('accept-invite/:token')
     acceptInvite(@Param('token') token: string) {
         return this.organizationService.acceptInvite(token)

@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { AddMemberDto } from './dto/add-member.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { AuditService } from 'src/audit/audit.service';
 import { Role } from '@prisma/client';
 import { JwtPayload } from 'src/auth/types/jwt-payload';
 import { InviteMemberDto } from './dto/invite-member.dto';
@@ -9,13 +10,27 @@ import { randomBytes } from 'crypto';
 @Injectable()
 export class OrganizationService {
 
-    constructor(private prisma: PrismaService) { }
+    constructor(
+        private prisma: PrismaService,
+        private auditService: AuditService,
+    ) { }
 
 
     async addMember(currentUser: any, dto: AddMemberDto) {
 
         if (dto.role === Role.OWNER && currentUser.role !== Role.OWNER) {
             throw new ForbiddenException('Only Owner can assign OWNER role')
+        }
+
+        const existingMembership = await this.prisma.membership.findFirst({
+            where: {
+                userId: currentUser.sub,
+                organizationId: currentUser.orgId
+            }
+        })
+
+        if (existingMembership) {
+            throw new BadRequestException('User is already a member of this organization')
         }
 
         const user = await this.prisma.user.findUnique({
@@ -58,6 +73,7 @@ export class OrganizationService {
             }
         })
 
+
     }
 
     async acceptInvite(token: string) {
@@ -86,20 +102,37 @@ export class OrganizationService {
             })
         }
 
-        await this.prisma.membership.create({
-            data: {
-                userId: user.id,
-                organizationId: invitation.organizationId,
-                role: invitation.role
+        if (invitation.accepted) {
+            return { message: 'Invitation already accepted' }
+        }
+        await this.prisma.$transaction(async (tx) => {
+
+
+            try {
+                await this.prisma.membership.create({
+                    data: {
+                        userId: user.id,
+                        organizationId: invitation.organizationId,
+                        role: invitation.role
+                    },
+                })
+
+            } catch (error: any) {
+                if (error.code !== 'P2002') {
+                    throw error
+                }
+
             }
+
+            await tx.invitation.update({
+                where: { id: invitation.id },
+                data: { accepted: true }
+            })
         })
 
-        await this.prisma.invitation.update({
-            where:{id: invitation.id},
-            data: {accepted: true}
-        })
-
-        return {message: 'Invitation accepted'}
+        return { message: 'Invitation accepted' }
     }
+
+
 
 }
