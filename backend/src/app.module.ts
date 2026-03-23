@@ -8,6 +8,9 @@ import { AuthModule } from './auth/auth.module';
 import { OrganizationModule } from './organization/organization.module';
 import { AuditService } from './audit/audit.service';
 import { AuditModule } from './audit/audit.module';
+import { TransactionService } from './transaction/transaction.service';
+import { TransactionController } from './transaction/transaction.controller';
+import { TransactionModule } from './transaction/transaction.module';
 
 @Module({
   imports: [
@@ -19,8 +22,9 @@ import { AuditModule } from './audit/audit.module';
     AuthModule,
     OrganizationModule,
     AuditModule,
+    TransactionModule,
   ],
-  controllers: [AppController],
-  providers: [AppService, AuditService],
+  controllers: [AppController, TransactionController],
+  providers: [AppService, AuditService, TransactionService],
 })
 export class AppModule { }
