@@ -80,4 +80,42 @@ export class TransactionService {
 
     }
 
+    async getSummary(user: any, query: any) {
+        const { from, to } = query;
+
+        const where: any = {
+            organizationId: user.orgId,
+        }
+
+
+        if (from || to) {
+            where.occurredAt = {}
+            if (from) where.occurredAt.gte = new Date(from)
+            if (to) where.occurredAt.lte = new Date(to)
+        }
+
+        const transaction = await this.prisma.transaction.findMany({
+            where,
+            select: {
+                amount: true,
+                type: true,
+            },
+        })
+
+        let income = 0
+        let expense = 0
+
+        for (const t of transaction) {
+            const value = Number(t.amount)
+
+            if (t.type === 'INCOME') income += value
+            if (t.type === 'EXPENSE') expense += value
+        }
+        return {
+            income,
+            expense,
+            balance: income - expense
+        }
+    }
+
 }
